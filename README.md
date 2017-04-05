@@ -8,7 +8,9 @@ Anyway, before you spent countless hours trying to figure out wtf is the "authen
 
 First, open your Discord Application Config (where you created your bot) and add a URL callback (must be a valid URL & you need to be able to get the GET responses on it!), after that, edit this URL:
 
-```https://discordapp.com/oauth2/authorize?redirect_uri={YOUR URL CALLBACK}&scope=identify%20guilds&response_type=code&client_id={YOUR BOT CLIENT ID}```
+```
+https://discordapp.com/oauth2/authorize?redirect_uri={YOUR URL CALLBACK}&scope=identify%20guilds&response_type=code&client_id={YOUR BOT CLIENT ID}
+```
 
 You can get your client ID on the application config page.
 
@@ -21,7 +23,7 @@ Now use that on the TemmieDiscordAuth class and have fun!
 ```
 TemmieDiscordAuth temmie = new TemmieDiscordAuth("your authentication code here", "your callback URL here", "your client ID here", "your client token here");
 temmie.doTokenExchange(); // ALWAYS do an token exchange before using any of the methods in TemmieDiscordAuth!
-
+```
 ### Get User Info
 **Code:**
 ```
