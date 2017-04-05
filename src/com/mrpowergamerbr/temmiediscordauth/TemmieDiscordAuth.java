@@ -12,9 +12,11 @@ import com.github.kevinsawicki.http.HttpRequest;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.mrpowergamerbr.temmiediscordauth.exception.DiscordAuthenticationException;
+import com.mrpowergamerbr.temmiediscordauth.exception.RateLimitedException;
 import com.mrpowergamerbr.temmiediscordauth.response.CurrentUserResponse;
 import com.mrpowergamerbr.temmiediscordauth.response.ErrorResponse;
 import com.mrpowergamerbr.temmiediscordauth.response.OAuthTokenResponse;
+import com.mrpowergamerbr.temmiediscordauth.response.RateLimitedResponse;
 import com.mrpowergamerbr.temmiediscordauth.utils.TemmieGuild;
 
 public class TemmieDiscordAuth {
@@ -26,7 +28,8 @@ public class TemmieDiscordAuth {
 	private final static String API_BASE_URL = "https://discordapp.com/api";
 	private final static String TOKEN_BASE_URL = "/oauth2/token";
 	private final static Gson gson = new Gson();
-
+	private boolean waitOnRateLimit = true;
+	
 	/**
 	 * Initializes a TemmieDiscordAuth instance
 	 * 
@@ -36,12 +39,26 @@ public class TemmieDiscordAuth {
 	 * @param clientSecret your application secret, get it on your Discord application config
 	 */
 	public TemmieDiscordAuth(String authCode, String redirectUri, String clientId, String clientSecret) {
+		this(authCode, redirectUri, clientId, clientSecret, true);
+	}
+
+	/**
+	 * Initializes a TemmieDiscordAuth instance
+	 * 
+	 * @param authCode authentication Code received on the URL callback, configure your URL callback on your Discord application config
+	 * @param redirectUri your URL callback
+	 * @param clientId your application client ID, get it on your Discord application config
+	 * @param clientSecret your application secret, get it on your Discord application config
+	 * @param waitOnRateLimit if the client is rate limited, we block the current thread to try again, if false, the method throws an exception
+	 */
+	public TemmieDiscordAuth(String authCode, String redirectUri, String clientId, String clientSecret, boolean waitOnRateLimit) {
 		this.authCode = authCode;
 		this.redirectUri = redirectUri;
 		this.clientId = clientId;
 		this.clientSecret = clientSecret;
+		this.waitOnRateLimit = waitOnRateLimit;
 	}
-
+	
 	/**
 	 * Starts a OAuth2 token exchange process
 	 * 
@@ -69,10 +86,23 @@ public class TemmieDiscordAuth {
 
 		hasErrors(body);
 
+		RateLimitedResponse rate = isRateLimited(body);
+		
+		if (rate != null) {
+			if (waitOnRateLimit) {
+				try {
+					Thread.sleep(rate.getRetryAfter());
+				} catch (InterruptedException e) { }
+				return doTokenExchange();
+			} else {
+				throw new RateLimitedException();
+			}
+		}
+		
 		OAuthTokenResponse s = gson.fromJson(body, OAuthTokenResponse.class);
 
 		this.accessToken = s.getAccessToken();
-		
+
 		return s;
 	}
 
@@ -84,7 +114,7 @@ public class TemmieDiscordAuth {
 	public String getAccessToken() {
 		return doTokenExchange().getAccessToken();
 	}
-	
+
 	/**
 	 * Get the current user info
 	 * 
@@ -101,11 +131,24 @@ public class TemmieDiscordAuth {
 
 		hasErrors(body);
 
+		RateLimitedResponse rate = isRateLimited(body);
+		
+		if (rate != null) {
+			if (waitOnRateLimit) {
+				try {
+					Thread.sleep(rate.getRetryAfter());
+				} catch (InterruptedException e) { }
+				return getCurrentUserIdentification();
+			} else {
+				throw new RateLimitedException();
+			}
+		}
+		
 		CurrentUserResponse s = gson.fromJson(body, CurrentUserResponse.class);
 
 		return s;
 	}
-	
+
 	/**
 	 * Get the current user guilds
 	 * 
@@ -120,20 +163,41 @@ public class TemmieDiscordAuth {
 
 		String body = req.body();
 
-		System.out.println(body);
-		
 		hasErrors(body);
 
+		RateLimitedResponse rate = isRateLimited(body);
+		
+		if (rate != null) {
+			if (waitOnRateLimit) {
+				try {
+					Thread.sleep(rate.getRetryAfter());
+				} catch (InterruptedException e) { }
+				return getUserGuilds();
+			} else {
+				throw new RateLimitedException();
+			}
+		}
+		
 		List<TemmieGuild> s = gson.fromJson(body, new TypeToken<List<TemmieGuild>>(){}.getType());
 
 		return s;
 	}
-	
+
 	private void hasErrors(String body) {
 		try {
-		ErrorResponse err = gson.fromJson(body, ErrorResponse.class);
-		if (err.getError() != null) { throw new DiscordAuthenticationException(err.getError()); }
+			ErrorResponse err = gson.fromJson(body, ErrorResponse.class);
+			if (err.getError() != null || err.getMessage() != null) { throw new DiscordAuthenticationException(err.getError()); }
 		} catch (Exception e) { } // dirty workaround ;)
+	}
+
+	private RateLimitedResponse isRateLimited(String body) {
+		try {
+			RateLimitedResponse err = gson.fromJson(body, RateLimitedResponse.class);
+			if (err.getMessage().equals("You are being rate limited.") || err.getRetryAfter() != 0) {
+				return err;
+			}
+		} catch (Exception e) { } // dirty workaround ;)
+		return null;
 	}
 
 	private String buildQuery(Map<String, Object> params) {
