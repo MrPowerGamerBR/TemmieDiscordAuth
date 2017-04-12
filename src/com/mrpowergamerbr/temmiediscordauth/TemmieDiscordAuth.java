@@ -26,9 +26,12 @@ public class TemmieDiscordAuth {
 	private String clientSecret;
 	private String accessToken;
 	private final static String API_BASE_URL = "https://discordapp.com/api";
-	private final static String TOKEN_BASE_URL = "/oauth2/token";
+	private final static String USER_IDENTIFICATION_URL = API_BASE_URL + "/users/@me";
+	private final static String USER_GUILDS_URL = USER_IDENTIFICATION_URL + "/guilds";
+	private final static String TOKEN_BASE_URL = API_BASE_URL + "/oauth2/token";
 	private final static Gson gson = new Gson();
 	private boolean waitOnRateLimit = true;
+	private String refreshToken;
 	
 	/**
 	 * Initializes a TemmieDiscordAuth instance
@@ -65,7 +68,7 @@ public class TemmieDiscordAuth {
 	 * @return the authentication response
 	 */
 	public OAuthTokenResponse doTokenExchange() {
-		String url = API_BASE_URL + TOKEN_BASE_URL;
+		String url = TOKEN_BASE_URL;
 
 		Map<String, Object> payload = new HashMap<String, Object>();
 
@@ -79,7 +82,7 @@ public class TemmieDiscordAuth {
 				.post(url)
 				.header("User-Agent", "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11")
 				.header("Content-Type", "application/x-www-form-urlencoded")
-				// PAYLOAD IS NOT FUCKING JSON
+				// PAYLOAD IS NOT JSON
 				.send(buildQuery(payload));
 
 		String body = req.body();
@@ -101,8 +104,9 @@ public class TemmieDiscordAuth {
 		
 		OAuthTokenResponse s = gson.fromJson(body, OAuthTokenResponse.class);
 
-		this.accessToken = s.getAccessToken();
-
+		this.accessToken = s.getAccessToken(); // Store Access Token for later use
+		this.refreshToken = s.getRefreshToken(); // Store Refresh Token for later use
+		
 		return s;
 	}
 
@@ -116,13 +120,69 @@ public class TemmieDiscordAuth {
 	}
 
 	/**
+	 * Regenerates the access token using the stored refresh token
+	 * 
+	 * @return access token
+	 */
+	public OAuthTokenResponse doTokenExchangeUsingRefreshToken() {
+		return doTokenExchangeUsingRefreshToken(refreshToken);
+	}
+	
+	/**
+	 * Regenerates the access token using a refresh token
+	 * 
+	 * @return access token
+	 */
+	public OAuthTokenResponse doTokenExchangeUsingRefreshToken(String refreshToken) {
+		String url = TOKEN_BASE_URL;
+
+		Map<String, Object> payload = new HashMap<String, Object>();
+
+		payload.put("grant_type", "authorization_code");
+		payload.put("refresh_token", refreshToken);
+		payload.put("redirect_uri", redirectUri);
+		payload.put("client_id", clientId);
+		payload.put("client_secret", clientSecret);
+
+		HttpRequest req = HttpRequest
+				.post(url)
+				.header("User-Agent", "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11")
+				.header("Content-Type", "application/x-www-form-urlencoded")
+				// PAYLOAD IS NOT JSON
+				.send(buildQuery(payload));
+
+		String body = req.body();
+
+		hasErrors(body);
+
+		RateLimitedResponse rate = isRateLimited(body);
+		
+		if (rate != null) {
+			if (waitOnRateLimit) {
+				try {
+					Thread.sleep(rate.getRetryAfter());
+				} catch (InterruptedException e) { }
+				return doTokenExchangeUsingRefreshToken(refreshToken);
+			} else {
+				throw new RateLimitedException();
+			}
+		}
+		
+		OAuthTokenResponse s = gson.fromJson(body, OAuthTokenResponse.class);
+
+		this.accessToken = s.getAccessToken();
+
+		return s;
+	}
+	
+	/**
 	 * Get the current user info
 	 * 
 	 * @return current user response
 	 */
 	public CurrentUserResponse getCurrentUserIdentification() {
 		HttpRequest req = HttpRequest
-				.get(API_BASE_URL + "/users/@me")
+				.get(USER_IDENTIFICATION_URL)
 				.header("User-Agent", "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11")
 				.header("Content-Type", "application/x-www-form-urlencoded")
 				.header("Authorization", "Bearer " + accessToken);
@@ -156,7 +216,7 @@ public class TemmieDiscordAuth {
 	 */
 	public List<TemmieGuild> getUserGuilds() {
 		HttpRequest req = HttpRequest
-				.get(API_BASE_URL + "/users/@me/guilds")
+				.get(USER_GUILDS_URL)
 				.header("User-Agent", "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11")
 				.header("Content-Type", "application/x-www-form-urlencoded")
 				.header("Authorization", "Bearer " + accessToken);
