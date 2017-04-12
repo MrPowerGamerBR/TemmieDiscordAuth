@@ -1,4 +1,4 @@
-package com.mrpowergamerbr.temmiediscordauth.exception;
+package com.mrpowergamerbr.temmiediscordauth.exceptions;
 
 public class RateLimitedException extends RuntimeException {
 

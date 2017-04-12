@@ -1,4 +1,4 @@
-package com.mrpowergamerbr.temmiediscordauth.response;
+package com.mrpowergamerbr.temmiediscordauth.responses;
 
 import com.google.gson.annotations.SerializedName;
 

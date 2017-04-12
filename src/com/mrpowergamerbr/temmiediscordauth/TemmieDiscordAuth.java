@@ -11,12 +11,12 @@ import org.apache.commons.lang3.StringUtils;
 import com.github.kevinsawicki.http.HttpRequest;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import com.mrpowergamerbr.temmiediscordauth.exception.DiscordAuthenticationException;
-import com.mrpowergamerbr.temmiediscordauth.exception.RateLimitedException;
-import com.mrpowergamerbr.temmiediscordauth.response.CurrentUserResponse;
-import com.mrpowergamerbr.temmiediscordauth.response.ErrorResponse;
-import com.mrpowergamerbr.temmiediscordauth.response.OAuthTokenResponse;
-import com.mrpowergamerbr.temmiediscordauth.response.RateLimitedResponse;
+import com.mrpowergamerbr.temmiediscordauth.exceptions.DiscordAuthenticationException;
+import com.mrpowergamerbr.temmiediscordauth.exceptions.RateLimitedException;
+import com.mrpowergamerbr.temmiediscordauth.responses.CurrentUserResponse;
+import com.mrpowergamerbr.temmiediscordauth.responses.ErrorResponse;
+import com.mrpowergamerbr.temmiediscordauth.responses.OAuthTokenResponse;
+import com.mrpowergamerbr.temmiediscordauth.responses.RateLimitedResponse;
 import com.mrpowergamerbr.temmiediscordauth.utils.TemmieGuild;
 
 public class TemmieDiscordAuth {
