@@ -68,46 +68,10 @@ public class TemmieDiscordAuth {
 	 * @return the authentication response
 	 */
 	public OAuthTokenResponse doTokenExchange() {
-		String url = TOKEN_BASE_URL;
-
-		Map<String, Object> payload = new HashMap<String, Object>();
-
-		payload.put("grant_type", "authorization_code");
+		Map<String, Object> payload = getAccessTokenPayload();
 		payload.put("code", authCode);
-		payload.put("redirect_uri", redirectUri);
-		payload.put("client_id", clientId);
-		payload.put("client_secret", clientSecret);
 
-		HttpRequest req = HttpRequest
-				.post(url)
-				.header("User-Agent", "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11")
-				.header("Content-Type", "application/x-www-form-urlencoded")
-				// PAYLOAD IS NOT JSON
-				.send(buildQuery(payload));
-
-		String body = req.body();
-
-		hasErrors(body);
-
-		RateLimitedResponse rate = isRateLimited(body);
-		
-		if (rate != null) {
-			if (waitOnRateLimit) {
-				try {
-					Thread.sleep(rate.getRetryAfter());
-				} catch (InterruptedException e) { }
-				return doTokenExchange();
-			} else {
-				throw new RateLimitedException();
-			}
-		}
-		
-		OAuthTokenResponse s = gson.fromJson(body, OAuthTokenResponse.class);
-
-		this.accessToken = s.getAccessToken(); // Store Access Token for later use
-		this.refreshToken = s.getRefreshToken(); // Store Refresh Token for later use
-		
-		return s;
+		return doTokenExchange(payload);
 	}
 
 	/**
@@ -134,15 +98,25 @@ public class TemmieDiscordAuth {
 	 * @return access token
 	 */
 	public OAuthTokenResponse doTokenExchangeUsingRefreshToken(String refreshToken) {
-		String url = TOKEN_BASE_URL;
+		Map<String, Object> payload = getAccessTokenPayload();
+		payload.put("refresh_token", refreshToken);
 
+		return doTokenExchange(payload);
+	}
+	
+	private Map<String, Object> getAccessTokenPayload() {
 		Map<String, Object> payload = new HashMap<String, Object>();
 
 		payload.put("grant_type", "authorization_code");
-		payload.put("refresh_token", refreshToken);
 		payload.put("redirect_uri", redirectUri);
 		payload.put("client_id", clientId);
 		payload.put("client_secret", clientSecret);
+		
+		return payload;
+	}
+	
+	private OAuthTokenResponse doTokenExchange(Map<String, Object> payload) {
+		String url = TOKEN_BASE_URL;
 
 		HttpRequest req = HttpRequest
 				.post(url)
@@ -170,10 +144,12 @@ public class TemmieDiscordAuth {
 		
 		OAuthTokenResponse s = gson.fromJson(body, OAuthTokenResponse.class);
 
-		this.accessToken = s.getAccessToken();
-
+		this.accessToken = s.getAccessToken(); // Store Access Token for later use
+		this.refreshToken = s.getRefreshToken(); // Store Refresh Token for later use
+		
 		return s;
 	}
+	
 	
 	/**
 	 * Get the current user info
