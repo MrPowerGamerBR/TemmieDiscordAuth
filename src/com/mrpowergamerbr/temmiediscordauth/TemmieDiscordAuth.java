@@ -32,6 +32,8 @@ public class TemmieDiscordAuth {
 	private final static Gson gson = new Gson();
 	private boolean waitOnRateLimit = true;
 	private String refreshToken;
+	private long generatedIn;
+	private long expiresIn;
 	
 	/**
 	 * Initializes a TemmieDiscordAuth instance
@@ -146,10 +148,19 @@ public class TemmieDiscordAuth {
 
 		this.accessToken = s.getAccessToken(); // Store Access Token for later use
 		this.refreshToken = s.getRefreshToken(); // Store Refresh Token for later use
-		
+		this.expiresIn = s.getExpiresIn();
+		this.generatedIn = System.currentTimeMillis();
 		return s;
 	}
 	
+	/**
+	 * Gets if the current access token is valid
+	 * 
+	 * @return
+	 */
+	public boolean isValid() {
+		return System.currentTimeMillis() > this.generatedIn + (this.expiresIn * 1000);
+	}
 	
 	/**
 	 * Get the current user info
