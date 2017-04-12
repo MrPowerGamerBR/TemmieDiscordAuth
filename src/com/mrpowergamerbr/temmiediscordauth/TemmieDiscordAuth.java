@@ -129,6 +129,8 @@ public class TemmieDiscordAuth {
 
 		String body = req.body();
 
+		System.out.println(body);
+		
 		hasErrors(body);
 
 		RateLimitedResponse rate = isRateLimited(body);
@@ -176,6 +178,8 @@ public class TemmieDiscordAuth {
 
 		String body = req.body();
 
+		System.out.println(body);
+		
 		hasErrors(body);
 
 		RateLimitedResponse rate = isRateLimited(body);
@@ -210,6 +214,8 @@ public class TemmieDiscordAuth {
 
 		String body = req.body();
 
+		System.out.println(body);
+		
 		hasErrors(body);
 
 		RateLimitedResponse rate = isRateLimited(body);
